@@ -5,9 +5,11 @@ from typing import Callable, Union, List
 import dspy
 import pandas as pd
 import requests
+import newspaper
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_qdrant import Qdrant
+from langchain_community.utilities.duckduckgo_search import DuckDuckGoSearchAPIWrapper
 from qdrant_client import QdrantClient, models
 from tqdm import tqdm
 
@@ -402,5 +404,52 @@ class VectorRM(dspy.Retrieve):
                     'title': doc.metadata['title'],
                     'url': doc.metadata['url'],
                 })
+
+        return collected_results
+
+class DuckDuckGoSearch(dspy.Retrieve):
+    def __init__(self, k=3, use_snippet=True, timeout=120):
+        super().__init__(k=k)
+        self.retrieve = DuckDuckGoSearchAPIWrapper()
+        self.use_snippet = use_snippet
+        self.timeout = timeout
+
+    def forward(self, query_or_queries: Union[str, List[str]], exclude_urls: List[str] = []) -> List[str]:
+        """Search with https://duckduckgo.com for self.k top passages for query or queries
+        Args:
+            query_or_queries (Union[str, List[str]]): The query or queries to search for.
+            exclude_urls (List[str]): A list of urls to exclude from the search results.
+        Returns:
+            a list of Dicts, each dict has keys of 'description', 'snippets' (list of strings), 'title', 'url'
+        """
+        queries = (
+            [query_or_queries]
+            if isinstance(query_or_queries, str)
+            else query_or_queries
+        )
+        collected_results = []
+        for query in queries:
+            try:
+                retrieve_results = self.retrieve.results(query, max_results=5, source='text')
+                results = []
+                for result in retrieve_results:
+                    url = result.get('link', '')
+                    if self.use_snippet:
+                        reference = result.get('snippet', '')
+                    else:
+                        # To extract the complete content using newspaper
+                        article = newspaper.article(url, timeout=self.timeout)
+                        reference = article.text or result.get('snippet', '')
+
+                    target_result = {'description': result.get('snippet', ''), 'snippets': [reference], 'title': result.get('title', ''), 'url': url}
+                    results.append(target_result)
+
+                collected_results += results[:self.k]
+
+            except Exception as e:
+                logging.error(f'Error occurs when searching query {query}: {e}')
+
+        if exclude_urls:
+            collected_results = [r for r in collected_results if r['url'] not in exclude_urls]
 
         return collected_results
