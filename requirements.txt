@@ -7,3 +7,7 @@ trafilatura
 langchain-huggingface
 qdrant-client
 langchain-qdrant
+duckduckgo_search==6.2.1
+groq==0.9.0
+langchain==0.1.16
+newspaper4k==0.9.3.1
