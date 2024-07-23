@@ -6,7 +6,7 @@ from groq import Groq
 lm_configs = STORMWikiLMConfigs()
 kwargs = {
     'model': 'llama3-70b-8192',
-    'api_key': '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',
+    'api_key': 'YOUR_API_KEY',
     'temperature': 1.0,
     'top_p': 0.9,
 }
