@@ -1,0 +1,5 @@
+Title: [Insert Article Title]
+Author: [Insert Author Name]
+References:
+    [Insert Reference 1 URL]
+    [Insert Reference 2 URL]
